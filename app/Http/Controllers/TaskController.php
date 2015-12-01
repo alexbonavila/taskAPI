@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 
 use App\Http\Requests;
 use App\Http\Controllers\Controller;
+use Illuminate\Support\Facades\Response;
 
 class TaskController extends Controller
 {
@@ -17,7 +18,10 @@ class TaskController extends Controller
      */
     public function index()
     {
-        return Task::all();
+        $task= Task::all();
+        return Response::json([
+            'data'=> $task->transform($task)
+        ],200);
     }
 
     /**
@@ -53,7 +57,20 @@ class TaskController extends Controller
      */
     public function show($id)
     {
-        $task=Task::findOrFail($id);
+        $task=Task::find($id);
+
+        if(!$task)
+            {
+            return Response::json([
+                'error'=>[
+                    'message'=>'Lesson does not exists',
+                    'code'=>195
+                ]
+            ],404);
+        }
+            return Response::json([
+                'data'=> $task->toArray()
+            ],200);
 
     }
 
@@ -94,5 +111,19 @@ class TaskController extends Controller
     public function destroy($id)
     {
         Task::destroy($id);
+    }
+
+    public function transform($task)
+    {
+        return array_map(function($task){
+            return[
+                'name'=> $task('name'),
+                'priority'=> $task('priority'),
+                'done'=> $task('done')
+            ];
+
+
+
+        },$task->toArray());
     }
 }
