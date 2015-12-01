@@ -113,17 +113,18 @@ class TaskController extends Controller
         Task::destroy($id);
     }
 
+    public function transformCollection($task)
+    {
+        return array_map([$this, 'transform'], $task->toArray());
+    }
+
+
     public function transform($task)
     {
-        return array_map(function($task){
             return[
-                'name'=> $task('name'),
-                'priority'=> $task('priority'),
-                'done'=> $task('done')
+                'name'=> $task['name'],
+                'priority'=> $task['priority'],
+                'done'=> $task['done']
             ];
-
-
-
-        },$task->toArray());
     }
 }
