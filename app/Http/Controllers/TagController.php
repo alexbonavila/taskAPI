@@ -10,6 +10,17 @@ use App\Http\Controllers\Controller;
 
 class TagController extends Controller
 {
+    protected $tagTransformer;
+    /**
+     * tagController constructor.
+     * @param $tagTransformer
+     */
+    public function __construct(tagTransformer $tagTransformer)
+    {
+        $this->tagTransformer = $tagTransformer;
+        $this->middleware('auth.basic', ['only' => 'store']);
+    }
+
     /**
      * Display a listing of the resource.
      *
@@ -17,7 +28,10 @@ class TagController extends Controller
      */
     public function index()
     {
-        return Tag::all();
+        $tag = tag::all();
+        return $this->respond([
+            'data' => $this->tagTransformer->transformCollection($tag->all())
+        ]);
     }
 
     /**
@@ -33,14 +47,18 @@ class TagController extends Controller
     /**
      * Store a newly created resource in storage.
      *
-     * @param  \Illuminate\Http\Request  $request
+     * @param
      * @return \Illuminate\Http\Response
      */
-    public function store(Request $request)
+    public function store()
     {
-        $tag=new Tag();
-        $tag->name=$request->name;
-        $tag->save();
+        if (! Input::get('name') or ! Input::get('done') or ! Input::get('priority'))
+        {
+            return $this->setStatusCode(IlluminateResponse::HTTP_UNPROCESSABLE_ENTITY)
+                ->respondWithError('Parameters failed validation for a tag.');
+        }
+        tag::create(Input::all());
+        return $this->respondCreated('tag successfully created.');
     }
 
     /**
@@ -51,7 +69,14 @@ class TagController extends Controller
      */
     public function show($id)
     {
-        $tag=Tag::findOrFail($id);
+        $tag = tag::find($id);
+        if (!$tag)
+        {
+            return $this->respondNotFound('tag does not exist');
+        }
+        return $this->respond([
+            'data' => $this->tagTransformer->transform($tag)
+        ]);
 
     }
 
@@ -75,7 +100,8 @@ class TagController extends Controller
      */
     public function update(Request $request, $id)
     {
-        //
+        $tag = tag::finOrFail($id);
+        $this->savetag($request, $tag);
     }
 
     /**
@@ -86,6 +112,6 @@ class TagController extends Controller
      */
     public function destroy($id)
     {
-        //
+        tag::destroy($id);
     }
 }

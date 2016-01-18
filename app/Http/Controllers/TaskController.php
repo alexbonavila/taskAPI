@@ -6,11 +6,24 @@ use App\Task;
 use Illuminate\Http\Request;
 
 use App\Http\Requests;
+use Acme\Transformers\TaskTransformer;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Response;
 
 class TaskController extends Controller
 {
+
+    protected $taskTransformer;
+    /**
+     * TaskController constructor.
+     * @param $taskTransformer
+     */
+    public function __construct(TaskTransformer $taskTransformer)
+    {
+        $this->taskTransformer = $taskTransformer;
+        $this->middleware('auth.basic', ['only' => 'store']);
+    }
+
     /**
      * Display a listing of the resource.
      *
@@ -18,10 +31,10 @@ class TaskController extends Controller
      */
     public function index()
     {
-        $task= Task::all();
-        return Response::json([
-            'data'=> $task->transform($task)
-        ],200);
+        $task = Task::all();
+        return $this->respond([
+            'data' => $this->taskTransformer->transformCollection($task->all())
+        ]);
     }
 
     /**
@@ -37,16 +50,18 @@ class TaskController extends Controller
     /**
      * Store a newly created resource in storage.
      *
-     * @param  \Illuminate\Http\Request  $request
+     * @param
      * @return \Illuminate\Http\Response
      */
-    public function store(Request $request)
+    public function store()
     {
-        $task=new Task();
-
-        $task->name=$request->name;
-        $task->priority=$request->prioryty;
-        $task->save();
+        if (! Input::get('name') or ! Input::get('done') or ! Input::get('priority'))
+        {
+            return $this->setStatusCode(IlluminateResponse::HTTP_UNPROCESSABLE_ENTITY)
+                ->respondWithError('Parameters failed validation for a task.');
+        }
+        Task::create(Input::all());
+        return $this->respondCreated('Task successfully created.');
     }
 
     /**
@@ -57,20 +72,14 @@ class TaskController extends Controller
      */
     public function show($id)
     {
-        $task=Task::find($id);
-
-        if(!$task)
-            {
-            return Response::json([
-                'error'=>[
-                    'message'=>'Lesson does not exists',
-                    'code'=>195
-                ]
-            ],404);
+        $task = Task::find($id);
+        if (!$task)
+        {
+            return $this->respondNotFound('Task does not exist');
         }
-            return Response::json([
-                'data'=> $task->toArray()
-            ],200);
+        return $this->respond([
+            'data' => $this->taskTransformer->transform($task)
+        ]);
 
     }
 
@@ -94,12 +103,8 @@ class TaskController extends Controller
      */
     public function update(Request $request, $id)
     {
-        $task=new Task();
-
-        $task->name=$request->name;
-        $task->priority=$request->prioryty;
-        $task->done=$request->done;
-        $task->save();
+        $task = Task::finOrFail($id);
+        $this->saveTask($request, $task);
     }
 
     /**
@@ -112,7 +117,7 @@ class TaskController extends Controller
     {
         Task::destroy($id);
     }
-
+/*
     public function transformCollection($task)
     {
         return array_map([$this, 'transform'], $task->toArray());
@@ -126,5 +131,5 @@ class TaskController extends Controller
                 'priority'=> $task['priority'],
                 'done'=> $task['done']
             ];
-    }
+    }*/
 }
